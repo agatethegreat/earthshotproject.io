@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Civitas Flow — Adaptive Traffic Control</title>
+    <link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Vibrant Traffic-Themed Palette */
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #64748b;
+            
+            /* Vibrant Accents */
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-purple: #8b5cf6;
+            
+            --border-color: #e2e8f0;
+            --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* ------------------------- */
+        /* STICKY HEADER & NAV       */
+        /* ------------------------- */
+        header {
+            position: sticky;
+            top: 0;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 1000;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+
+        nav {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 16px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .logo {
+            font-family: 'Crimson Pro', serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .logo span {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            box-shadow: 0 0 10px var(--accent-green);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 24px;
+            list-style: none;
+        }
+
+        .nav-link {
+            font-weight: 500;
+            font-size: 15px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 6px 0;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .nav-link:hover { color: var(--accent-blue); }
+        .nav-link.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
+
+        /* ------------------------- */
+        /* PAGE CONTAINER & LOGIC    */
+        /* ------------------------- */
+        main {
+            flex-grow: 1;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 60px 40px 80px 40px;
+            width: 100%;
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .page.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ------------------------- */
+        /* GENERAL TYPOGRAPHY        */
+        /* ------------------------- */
+        h1 {
+            font-family: 'Crimson Pro', serif;
+            font-size: 64px;
+            font-weight: 600;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            background: linear-gradient(to right, var(--accent-blue), var(--accent-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        h2 { font-family: 'Crimson Pro', serif; font-size: 42px; font-weight: 600; margin-bottom: 24px; color: var(--text-primary); }
+        h3 { font-size: 24px; font-weight: 600; margin: 40px 0 20px 0; color: var(--text-primary); }
+        p { font-size: 17px; line-height: 1.7; color: var(--text-secondary); margin-bottom: 24px; }
+
+        /* ------------------------- */
+        /* COMPONENTS                */
+        /* ------------------------- */
+        .hero { margin-bottom: 60px; }
+        .hero-badge {
+            display: inline-block; padding: 8px 16px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 20px; font-size: 14px; font-weight: 600; color: white;
+            margin-bottom: 24px; letter-spacing: 0.5px; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+        }
+        .subtitle { font-size: 22px; color: var(--text-secondary); max-width: 700px; }
+        .highlight { background: linear-gradient(180deg, transparent 55%, #fde047 55%); padding: 0 4px; font-weight: 500; }
+        .divider { height: 2px; background: linear-gradient(90deg, transparent, var(--border-color), transparent); margin: 60px 0; }
+
+        /* Stat cards */
+        .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin: 40px 0; }
+        .stat-card { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 32px 24px; box-shadow: var(--shadow-sm); transition: all 0.3s ease;}
+        .stat-card:nth-child(1) { border-bottom: 5px solid var(--accent-red); }
+        .stat-card:nth-child(1) .stat-number { color: var(--accent-red); }
+        .stat-card:nth-child(2) { border-bottom: 5px solid var(--accent-yellow); }
+        .stat-card:nth-child(2) .stat-number { color: var(--accent-yellow); }
+        .stat-card:nth-child(3) { border-bottom: 5px solid var(--accent-green); }
+        .stat-card:nth-child(3) .stat-number { color: var(--accent-green); }
+        .stat-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-md); }
+        .stat-number { font-family: 'Crimson Pro', serif; font-size: 48px; font-weight: 600; margin-bottom: 8px; line-height: 1.1; }
+        .stat-label { font-size: 15px; font-weight: 500; }
+
+        /* Fact Items */
+        .fact-item { background: var(--bg-secondary); padding: 28px 32px; margin-bottom: 20px; border-radius: 8px; border-left: 5px solid var(--accent-blue); box-shadow: var(--shadow-sm); transition: all 0.3s ease; }
+        .fact-item:nth-child(even) { border-left-color: var(--accent-purple); }
+        .fact-item:nth-child(3n) { border-left-color: var(--accent-yellow); }
+        .fact-item:hover { transform: translateX(6px); box-shadow: var(--shadow-md); }
+        .fact-title { font-weight: 600; font-size: 18px; color: var(--text-primary); margin-bottom: 10px; }
+        .fact-description { font-size: 16px; margin-bottom: 10px; }
+        .fact-source { font-size: 14px; font-style: italic; color: var(--text-muted); }
+        .fact-source a { color: var(--accent-blue); text-decoration: none; }
+
+        /* Callout */
+        .callout { background: linear-gradient(135deg, #eff6ff 0%, #f0fdfa 100%); border: 1px solid #bfdbfe; border-left: 5px solid var(--accent-blue); border-radius: 12px; padding: 28px 32px; margin: 40px 0; box-shadow: var(--shadow-sm); }
+        .callout.warning { background: linear-gradient(135deg, #fef2f2 0%, #fff7ed 100%); border-color: #fecaca; border-left-color: var(--accent-red); }
+        .callout-title { font-weight: 600; font-size: 20px; color: var(--accent-blue); margin-bottom: 16px; }
+        .callout.warning .callout-title { color: var(--accent-red); }
+
+        /* Lists */
+        ul.custom-list { list-style: none; margin: 24px 0; padding: 0; }
+        ul.custom-list li { padding-left: 28px; position: relative; margin-bottom: 14px; font-size: 17px; }
+        ul.custom-list li::before { content: "→"; position: absolute; left: 0; color: var(--accent-purple); font-weight: 600; }
+
+        /* Comparisons */
+        .comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 40px 0; }
+        .comparison-column { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 32px; box-shadow: var(--shadow-sm); }
+        .comparison-column.highlight { border: 3px solid var(--accent-green); background: #f0fdf4; padding: 30px; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.15); }
+        .comparison-title { font-weight: 600; font-size: 20px; margin-bottom: 24px; }
+        .comparison-column.highlight .comparison-title { color: var(--accent-green); }
+
+        /* Large Quote Highlight */
+        .quote-highlight { text-align: center; padding: 50px 30px; background: var(--text-primary); color: white; border-radius: 16px; margin: 60px 0; box-shadow: var(--shadow-md); }
+        .quote-highlight .numbers { font-family: 'Crimson Pro', serif; font-size: 36px; font-weight: 600; color: var(--accent-green); line-height: 1.3; margin-bottom: 20px; }
+        .quote-highlight .source { font-size: 16px; color: var(--text-muted); }
+
+        /* Team Grid */
+        .team-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 24px; margin-top: 40px; }
+        .team-member { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 28px; text-align: center; box-shadow: var(--shadow-sm); transition: all 0.3s ease; }
+        .team-member:nth-child(6n+1) { border-top: 4px solid var(--accent-blue); }
+        .team-member:nth-child(6n+2) { border-top: 4px solid var(--accent-green); }
+        .team-member:nth-child(6n+3) { border-top: 4px solid var(--accent-yellow); }
+        .team-member:nth-child(6n+4) { border-top: 4px solid var(--accent-red); }
+        .team-member:nth-child(6n+5) { border-top: 4px solid var(--accent-purple); }
+        .team-member:nth-child(6n+6) { border-top: 4px solid var(--text-primary); }
+        .team-member:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); }
+        .member-name { font-weight: 600; font-size: 20px; }
+
+        /* Footer */
+        footer { background: #0f172a; color: #f8fafc; padding: 40px; text-align: center; margin-top: auto; }
+        footer p { color: #94a3b8; margin: 0; font-size: 15px; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            nav { flex-direction: column; padding: 16px 20px; }
+            .nav-links { flex-wrap: wrap; justify-content: center; gap: 15px; }
+            main { padding: 40px 24px; }
+            h1 { font-size: 42px; }
+            h2 { font-size: 32px; }
+            .comparison { grid-template-columns: 1fr; }
+            .quote-highlight .numbers { font-size: 28px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- STICKY HEADER -->
+    <header>
+        <nav>
+            <div class="logo" onclick="switchPage('home')">
+                <span></span> Civitas Flow
+            </div>
+            <ul class="nav-links">
+                <li><a class="nav-link active" data-target="home" onclick="switchPage('home')">Home</a></li>
+                <li><a class="nav-link" data-target="tech" onclick="switchPage('tech')">Technology</a></li>
+                <li><a class="nav-link" data-target="market" onclick="switchPage('market')">Market</a></li>
+                <li><a class="nav-link" data-target="proof" onclick="switchPage('proof')">Proof</a></li>
+                <li><a class="nav-link" data-target="team" onclick="switchPage('team')">Team</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- MAIN CONTENT AREA -->
+    <main>
+        
+        <!-- =================== PAGE 1: HOME =================== -->
+        <div id="home" class="page active">
+            <div class="hero">
+                <div class="hero-badge">Adaptive Traffic Signal Control</div>
+                <h1>Making Cities Flow</h1>
+                <p class="subtitle">Cutting-edge computer vision and adaptive control to eliminate congestion at the intersections existing systems can't handle.</p>
+            </div>
+
+            <h2>The Problem Scale</h2>
+            <div class="comparison">
+                <div class="comparison-column">
+                    <div class="comparison-title">Current Default (Fixed Timing)</div>
+                    <ul class="custom-list">
+                        <li>An engineer programs a strict cycle: green for 45s, yellow for 3s, red for 30s.</li>
+                        <li>Runs the exact same cycle at 3:00 AM with no cars as it does during 5:00 PM rush hour.</li>
+                        <li>No updates or highly inconsistent changes to timing over years.</li>
+                    </ul>
+                </div>
+                <div class="comparison-column highlight">
+                    <div class="comparison-title">The Solution (Adaptive Timing)</div>
+                    <ul class="custom-list">
+                        <li>System measures what is <em>actually</em> at the intersection right now.</li>
+                        <li>Extends green if there is a long queue detected.</li>
+                        <li>Cuts green short if the road is completely empty.</li>
+                        <li>Adjusts in real-time, every single cycle.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <h2>Our Primary Target Context</h2>
+            <p>Current market opportunities focus almost exclusively on classifying cars in clean, grid-like systems. We are building for the complex, messy realities of urban waterfronts and irregular corridors.</p>
+
+            <div class="callout">
+                <div class="callout-title">🎯 Intersection #1 Pilot: 169 Lake Shore Blvd W</div>
+                <p>This is exactly the type of intersection where incumbent systems break down. Located at <strong>Lake Shore Blvd W + Rees St + Lower Simcoe St</strong>, it features:</p>
+                <ul class="custom-list">
+                    <li><strong>Irregular geometry:</strong> Not a clean 4-way intersection.</li>
+                    <li><strong>Adverse lighting:</strong> Gardiner Expressway overhead creates challenging shadows and artificial light mixes.</li>
+                    <li><strong>Heavy mixed-use:</strong> Merging traffic in the middle of the intersection.</li>
+                    <li><strong>Massive foot traffic:</strong> Tourists heading to the CN Tower and Roundhouse Park, mixed with commuters.</li>
+                    <li><strong>Active transit:</strong> Cyclists on the waterfront trail and multiple visible crosswalks.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- =================== PAGE 2: TECHNOLOGY =================== -->
+        <div id="tech" class="page">
+            <h2>The Perception Layer</h2>
+            <p>The perception layer our team is building—detection with tracking and pose estimation—is exactly what production systems are beginning to use. We are closing the gap on the part everyone admits is still weak: <span class="highlight">pedestrian-aware, irregular-intersection deployment.</span></p>
+            
+            <div class="fact-item">
+                <div class="fact-title">Computer Vision Detection is Production-Ready</div>
+                <div class="fact-description">
+                    <ul class="custom-list">
+                        <li>Improved YOLOv8 models for synchronous vehicle and pedestrian detection achieve <strong>95.23% mAP at 41.46 FPS</strong> in complex urban scenes.</li>
+                        <li>YOLO-APD reaches <strong>77.7% mAP@0.5:0.95</strong> with <strong>>96% pedestrian recall</strong> at 100 FPS.</li>
+                        <li>CARLA-SUMO co-simulation work confirms that YOLOv5-based MARL (Multi-Agent Reinforcement Learning) traffic signal control significantly improves flow <em>even with imperfect detection</em>.</li>
+                    </ul>
+                    <p><strong>The takeaway:</strong> Our perception stack does not need to be 100% perfect to win and improve flow.</p>
+                </div>
+                <div class="fact-source">
+                    Sources: <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC11435795/" target="_blank">Synchronous YOLOv8 (NIH)</a> | 
+                    <a href="https://arxiv.org/pdf/2507.05376" target="_blank">YOLO-APD</a> | 
+                    <a href="https://arxiv.org/html/2412.03925v1" target="_blank">CARLA-SUMO MARL</a>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <h2>Honest Weaknesses (And How We Address Them)</h2>
+            <p>We are building a defensible product by acknowledging and engineering around the known limitations of current tech:</p>
+
+            <div class="callout warning">
+                <div class="callout-title">Transparent Technical Challenges</div>
+                <ul class="custom-list">
+                    <li><strong>Low-Light & Occlusion:</strong> Computer-vision-only systems struggle in adverse weather and shadows (which is why Pittsburgh uses radar+camera fusion). We are engineering specifically for the Gardiner Expressway's overhead light mix.</li>
+                    <li><strong>Downstream Coordination:</strong> The ScienceDirect State College study found that ATSC at all intersections doesn't always help. Coordination with downstream intersections matters deeply, meaning a single-intersection demo is not the whole story.</li>
+                    <li><strong>Well-Funded Incumbents:</strong> Vendors like Surtrac, NoTraffic, Miovision, and Yunex have deep pockets. Our differentiator has to be genuine—pedestrian-first design and irregular geometry—not just "we also do adaptive signals."</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- =================== PAGE 3: MARKET =================== -->
+        <div id="market" class="page">
+            <h2>The Competitive Landscape</h2>
+            <p>The adaptive signal control market has well-funded incumbents, including Surtrac (Rapid Flow Technologies), NoTraffic, Miovision, and Yunex Traffic. However, their primary deployments are vehicle-centric.</p>
+
+            <h3>The Positioning Wedge</h3>
+            <p>Our positioning is not "cheaper Surtrac." Our positioning is <span class="highlight">"Surtrac for the intersections Surtrac can't handle."</span></p>
+            
+            <p>Lake Shore Blvd + Rees + Lower Simcoe is literally the failure mode of existing systems. Surtrac's creators themselves admitted during their deployments that they <strong>"got feedback from pedestrians who were feeling left out."</strong> That specific gap—pedestrian-aware, irregular waterfront intersections—is our wedge.</p>
+
+            <div class="divider"></div>
+
+            <h2>Cost is Not the Bottleneck</h2>
+            <p>Cities have the money to solve this. What they lack is a system that handles weird geometry and pedestrian-heavy waterfront intersections gracefully.</p>
+
+            <ul class="custom-list">
+                <li>Surtrac costs <strong>~$20K per intersection</strong> to wire up.</li>
+                <li>Despite this cost, studies (like the Florida DOT evaluation) show a Benefit-Cost Ratio (BCR) of <strong>5.4 to 12.8</strong>.</li>
+                <li>Because the ROI is so definitively proven, municipal budgets are not the primary barrier—deployment capability in complex zones is.</li>
+            </ul>
+        </div>
+
+        <!-- =================== PAGE 4: PROOF =================== -->
+        <div id="proof" class="page">
+            <h2>Proof That It Works</h2>
+            <p>The case for adaptive signal control is no longer speculative. It is a 13-year-old, government-validated, peer-reviewed result. We have a clean evidence ladder.</p>
+
+            <div class="quote-highlight">
+                <div class="numbers">25% travel time reduction.<br>40% wait reduction.<br>21% emissions cut.</div>
+                <div class="source">— Pittsburgh's Surtrac Pilot (The Gold Standard)</div>
+            </div>
+
+            <div class="fact-item">
+                <div class="fact-title">Fact 1: Pittsburgh's Surtrac Pilot (The Flagship)</div>
+                <div class="fact-description">The original 9-intersection deployment at Baum Boulevard in 2012 produced a 25% reduction in travel time, 40% reduction in vehicle wait time, 30–31% reduction in stops, 41% reduction in idling, and a 21% reduction in vehicle emissions, all benchmarked against existing actuated signal timing.</div>
+                <div class="fact-source">Sources: <a href="https://www.ri.cmu.edu/pub_files/2013/1/13-0315.pdf" target="_blank">Carnegie Mellon Robotics Institute</a> | <a href="https://www.smartcitiesdive.com/news/this-ai-traffic-system-in-pittsburgh-has-reduced-travel-time-by-25/447494/" target="_blank">Smart Cities Dive</a></div>
+            </div>
+
+            <div class="fact-item">
+                <div class="fact-title">Fact 2: Florida DOT 8-Corridor Study (Multi-City Validation)</div>
+                <div class="fact-description">Adaptive Signal Control Technology cut travel time by an average of 9.36% across eight Florida cities, with a benefit-cost ratio of 5.4 (operational benefits only) to 12.8 (including safety). One of the most rigorous independent evaluations on record.</div>
+                <div class="fact-source">Source: <a href="https://www.itskrs.its.dot.gov/2021-b01579" target="_blank">U.S. DOT ITS Knowledge Resources</a></div>
+            </div>
+
+            <div class="fact-item">
+                <div class="fact-title">Fact 3: Nature Communications 2025 (The Climate Stakes)</div>
+                <div class="fact-description">Big-data adaptive signal control in China's 100 most congested cities reduced peak-hour trip times by 11%. Deploying at just the first 20% of intersections in Shanghai cut peak times by 8%. Estimated annual benefit: 31.73 million tonnes of CO₂ reduction and US$31.82 billion in societal benefits against a US$1.48 billion cost.</div>
+                <div class="fact-source">Source: <a href="https://www.nature.com/articles/s41467-025-56701-4" target="_blank">Nature Communications</a></div>
+            </div>
+
+            <div class="fact-item">
+                <div class="fact-title">Fact 4: FHWA Meta-Finding (The Regulatory Baseline)</div>
+                <div class="fact-description">The U.S. Federal Highway Administration concludes that adaptive signal control improves average performance metrics by 10% or more, with improvements of 50%+ in systems with outdated timing. Crashes can be reduced by up to 15%. This is the conservative baseline we anchor to.</div>
+                <div class="fact-source">Source: <a href="https://www.fhwa.dot.gov/innovation/everydaycounts/edc-1/pdf/asct_brochure.pdf" target="_blank">FHWA Adaptive Signal Control Technologies</a></div>
+            </div>
+
+            <div class="callout">
+                <div class="callout-title">📈 Meta-Analysis: The Numbers Cluster Tightly</div>
+                <p>The numbers converge across independent studies. Pittsburgh (~25%), Bellevue WA (~36–43%), Toronto MARLIN simulation (15–26%), Florida (9.36%), and China at scale (8–11%). Different cities, methodologies, and vendors all converge on <strong>double-digit percentage travel time reductions</strong>. We aren't relying on one cherry-picked study.</p>
+            </div>
+        </div>
+
+        <!-- =================== PAGE 5: TEAM =================== -->
+        <div id="team" class="page">
+            <h2>Our Team</h2>
+            <p>A cross-functional group combining computer vision expertise, systems engineering, and urban deployment experience to solve the intersections others can't.</p>
+            
+            <div class="team-grid">
+                <div class="team-member"><div class="member-name">Clayton Mo</div></div>
+                <div class="team-member"><div class="member-name">Bhavyah Rajkumar</div></div>
+                <div class="team-member"><div class="member-name">Himaneesh Sompalle</div></div>
+                <div class="team-member"><div class="member-name">Bill Yu</div></div>
+                <div class="team-member"><div class="member-name">Ethan Li</div></div>
+                <div class="team-member"><div class="member-name">Ishaan Bhalerao</div></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer>
+        <p>&copy; 2026 Civitas Flow Traffic Solutions. Making cities move beautifully.</p>
+    </footer>
+
+    <!-- JAVASCRIPT FOR PAGE SWITCHING -->
+    <script>
+        function switchPage(pageId) {
+            // 1. Hide all pages
+            const pages = document.querySelectorAll('.page');
+            pages.forEach(page => {
+                page.classList.remove('active');
+            });
+
+            // 2. Remove active class from all nav links
+            const links = document.querySelectorAll('.nav-link');
+            links.forEach(link => {
+                link.classList.remove('active');
+            });
+
+            // 3. Show the selected page
+            const targetPage = document.getElementById(pageId);
+            if(targetPage) {
+                targetPage.classList.add('active');
+            }
+
+            // 4. Highlight the active nav link
+            const targetLink = document.querySelector(`.nav-link[data-target="${pageId}"]`);
+            if(targetLink) {
+                targetLink.classList.add('active');
+            }
+
+            // 5. Scroll smoothly to top of main content
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
